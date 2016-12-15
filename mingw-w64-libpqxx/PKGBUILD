@@ -1,0 +1,47 @@
+_realname=libpqxx
+pkgbase=mingw-w64-${_realname}
+pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
+pkgver=5.0
+pkgrel=1
+pkgdesc="C++ client API for PostgreSQL (mingw-w64)"
+arch=('any')
+url="http://pqxx.org/development/libpqxx/"
+license=('BSD')
+makedepends=("${MINGW_PACKAGE_PREFIX}-gcc" "${MINGW_PACKAGE_PREFIX}-postgresql")
+options=('staticlibs' 'strip')
+source=(http://pqxx.org/~jtv/tmp/pqxx/snapshot/${_realname}-${pkgver}.tar.gz)
+sha256sums=('dc5c0178352419094197592bd02fc956fd669c741d21e560796ca8d25903c5ab')
+
+prepare() {
+  cd ${srcdir}/${_realname}-${pkgver}
+}
+
+build() {
+  [[ -d "${srcdir}/build-${MINGW_CHOST}" ]] && rm -rf "${srcdir}/build-${MINGW_CHOST}"
+  mkdir -p ${srcdir}/build-${MINGW_CHOST}
+  cd ${srcdir}/build-${MINGW_CHOST}
+  ../${_realname}-${pkgver}/configure \
+    --disable-shared \
+    --enable-static \
+    --prefix=${MINGW_PREFIX} \
+    --build=${MINGW_CHOST} \
+    --host=${MINGW_CHOST} \
+    --target=${MINGW_CHOST} \
+    --disable-documentation
+  make
+}
+
+package() {
+  cd ${srcdir}/build-${MINGW_CHOST}
+  # mkdir -p "${pkgdir}${MINGW_PREFIX}/"{bin,include,lib}
+  make DESTDIR="${pkgdir}" install
+  
+  # Move dll's to bin directory
+  # mv "${pkgdir}${MINGW_PREFIX}/lib/"*.dll "${pkgdir}${MINGW_PREFIX}/bin/"
+  
+  # Rename the .a files to .dll.a as they're actually import libraries and not static libraries
+  for implib in "${pkgdir}${MINGW_PREFIX}/lib/"*.a; do
+    mv $implib ${implib/.a/.dll.a}
+  done
+
+}
